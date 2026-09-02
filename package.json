@@ -1,14 +1,23 @@
 {
-  "name": "distributed-redis-implementation",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "distributed-redis-clone",
+  "version": "0.1.0",
+  "description": "Phase 1: single-node Redis-compatible KV store (RESP protocol) in TypeScript",
+  "main": "dist/src/server.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "node dist/src/server.js",
+    "bench": "ts-node-dev --transpile-only benchmark/load-test.ts",
+    "bench:build": "node dist/benchmark/load-test.js"
   },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "redis-parser": "^3.0.0"
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
