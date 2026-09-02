@@ -11,11 +11,10 @@
     "bench": "ts-node-dev --transpile-only benchmark/load-test.ts",
     "bench:build": "node dist/benchmark/load-test.js"
   },
-  "dependencies": {},
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^20.19.43",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0"
