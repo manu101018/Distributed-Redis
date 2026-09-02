@@ -1,5 +1,5 @@
 import * as net from "net";
-
+import * as enc from './resp/encoder';
 const PORT = 8000;
 const HOST = "0.0.0.0";
 
@@ -7,8 +7,8 @@ const server = net.createServer((connection) => {
     console.log('client conncted');
 
     connection.on('data', (chunks: Buffer)=>{
-        console.log("data received", chunks.toString());
-        connection.write(chunks);
+        console.log("data received", JSON.stringify(chunks.toString()));
+        connection.write(enc.simpleString("PONG"));
     })
 
     connection.on('close',() =>{
