@@ -12,9 +12,29 @@ const handlers: Record<string, CommandHandler> = {
 
     SET: (store, args) => {
         if (args.length < 2) return wrongArgs("SET");
-        const [key, value] = args;
-        store.set(key, value);
-        return enc.simpleString("OK");
+        const [key, value, ...opts] = args;
+        let ttlMs : number | undefined;
+
+        for (let i = 0; i < opts.length; i++) {
+            const opt = opts[i].toUpperCase();
+            if (opt === 'EX') ttlMs = Number(opts[++i]) * 1000;
+            else if (opt === 'PX') ttlMs = Number(opts[++i]);
+            else return enc.error('syntax error');
+        }
+
+        if (ttlMs !== undefined && (Number.isNaN(ttlMs) || ttlMs <= 0)) {
+            return enc.error("invalid expire time in 'set' command");
+        }
+
+        store.set(key, value, ttlMs);
+        return enc.simpleString('OK');
+    },
+
+    EXPIRE: (store, args) =>{
+        if (args.length !== 2) return wrongArgs('EXPIRE');
+        const seconds = Number(args[1]);
+        if (Number.isNaN(seconds)) return enc.error('value is not an integer or out of range');
+        return enc.integer(store.expire(args[0], seconds * 1000) ? 1 : 0);
     },
 
     GET: (store, args) => {
@@ -32,7 +52,15 @@ const handlers: Record<string, CommandHandler> = {
 
     SIZE: (store, _args) => {
         return enc.integer(store.size());
-    }
+    },
+
+    TTL: (store, args) => {
+        if (args.length !== 1) return wrongArgs('TTL');
+        const ttl = store.ttlMs(args[0]);
+        if (ttl === null) return enc.integer(-2); // key doesn't exist (Redis convention)
+        if (ttl === -1) return enc.integer(-1);   // no expiry set
+        return enc.integer(Math.ceil(ttl / 1000)); // convert ms remaining -> whole seconds
+    },
 }
 
 export function dispatch(store: Store, name: string, args: string[]): Buffer {
