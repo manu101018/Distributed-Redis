@@ -16,10 +16,14 @@ const server = net.createServer((connection) => {
     connection.on('data', (chunks: Buffer) => {
         parser.feed(chunks);
         const commands = parser.drainCommands();
+        if (commands.length === 0) return;
+
+        const responses: Buffer[] = [];
+
         for (const cmd of commands) {
-            console.log("parsed: ", cmd);
-            connection.write(dispatch(store, cmd.name, cmd.args));
+            responses.push(dispatch(store, cmd.name, cmd.args));
         }
+        connection.write(Buffer.concat(responses));
     })
 
     connection.on('close', () => {
