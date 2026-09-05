@@ -9,9 +9,24 @@ const PIPELINE = Number(process.env.PIPELINE ?? 1);
 
 class LatencyRecorder {
     private samples: number[] = [];
+    private maxi: number = 0;
+    private totalSeen = 0;
+    private readonly maxSamples = 500_000; // cap memory regardless of total request count
 
     record(ms: number): void {
-        this.samples.push(ms);
+        this.totalSeen++;
+        if(ms > this.maxi) this.maxi = ms;
+
+        if (this.samples.length < this.maxSamples) {
+            this.samples.push(ms);
+        } else {
+            // Reservoir sampling: as more items arrive, each new one has a
+            // shrinking (maxSamples / totalSeen) chance of replacing a random
+            // existing sample, keeping the sample statistically representative
+            // of the whole stream without storing the whole stream.
+            const j = Math.floor(Math.random() * this.totalSeen);
+            if (j < this.maxSamples) this.samples[j] = ms;
+        }
     }
 
     percentile(p: number): number {
@@ -25,6 +40,14 @@ class LatencyRecorder {
     mean(): number {
         if (this.samples.length === 0) return 0;
         return this.samples.reduce((a, b) => a + b, 0) / this.samples.length;
+    }
+
+    max(): number {
+        return this.maxi;
+    }
+
+    count(): number {
+        return this.totalSeen;
     }
 }
 
@@ -105,12 +128,16 @@ async function main() {
     await Promise.all(connections);
 
     const elapsed = (performance.now() - start) / 1000;
+
+    const completed = latency.count();
+    console.log(`completed requests: ${completed}`);
     console.log(`completed in ${elapsed.toFixed(2)}s`);
-    console.log(`throughput: ${(TOTAL_REQUESTS / elapsed).toFixed(0)} req/s`);
+    console.log(`throughput: ${(completed / elapsed).toFixed(0)} req/s`);
     console.log(`p50: ${latency.percentile(50).toFixed(2)}ms`);
     console.log(`p95: ${latency.percentile(95).toFixed(2)}ms`);
     console.log(`p99: ${latency.percentile(99).toFixed(2)}ms`);
     console.log(`mean: ${latency.mean().toFixed(2)}ms`);
+    console.log(`max: ${latency.max().toFixed(2)}ms`);
 }
 
 main();
