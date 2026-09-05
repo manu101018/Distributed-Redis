@@ -61,6 +61,71 @@ const handlers: Record<string, CommandHandler> = {
         if (ttl === -1) return enc.integer(-1);   // no expiry set
         return enc.integer(Math.ceil(ttl / 1000)); // convert ms remaining -> whole seconds
     },
+
+    EXISTS: (store, args) => {
+        if(args.length < 1) return wrongArgs("EXISTS");
+        return enc.integer(store.exists(args));
+    },
+
+    INCR: (store, args) =>{
+        if(args.length !== 1) return wrongArgs("INCR");
+        try {
+            return enc.integer(store.incrBy(args[0], 1));
+        } catch (error) {
+            return enc.error((error as Error).message);
+        }
+    },
+
+    INCRBY: (store, args) => {
+        if(args.length !== 2) return wrongArgs("INCRBY");
+        const delta = Number(args[1]);
+        if (Number.isNaN(delta)) return enc.error('value is not an integer or out of range');
+
+        try {
+            return enc.integer(store.incrBy(args[0], delta));
+        } catch (error) {
+            return enc.error((error as Error).message);
+        }
+    },
+
+    DECR: (store, args) => {
+        if (args.length !== 1) return wrongArgs("DECR");
+        try {
+            return enc.integer(store.incrBy(args[0], -1));
+        } catch (error) {
+            return enc.error((error as Error).message);
+        }
+    },
+
+    KEYS: (store, args) => {
+        if(args.length !== 1) return wrongArgs("KEYS");
+        return enc.array(store.keys(args[0]));
+    },
+
+    DBSIZE: (store, _args) =>{
+        return enc.integer(store.size());
+    },
+
+    FLUSHALL: (store, _args) => {
+        store.flushAll();
+        return enc.simpleString("OK");
+    },
+
+    PEXPIRE: (store, args) =>{
+        if(args.length !== 2) return wrongArgs("PEXPIRE");
+
+        const ms = Number(args[1]);
+        if(Number.isNaN(ms)) return enc.error('value is not an integer or out of range');
+        return enc.integer(store.expire(args[0], ms) ? 1 : 0);
+    },
+
+    PTTL: (store, args) => {
+        if (args.length !== 1) return wrongArgs('PTTL');
+        const ttl = store.ttlMs(args[0]);
+        if (ttl === null) return enc.integer(-2);
+        if (ttl === -1) return enc.integer(-1);
+        return enc.integer(Math.ceil(ttl));
+    },
 }
 
 export function dispatch(store: Store, name: string, args: string[]): Buffer {

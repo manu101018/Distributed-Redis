@@ -4,7 +4,7 @@ import { RespParser } from "./resp/parser";
 import { Store } from "./store/store";
 import { dispatch } from "./commands";
 
-const PORT = 8000;
+const PORT = 6380;
 const HOST = "0.0.0.0";
 
 const store = new Store();
