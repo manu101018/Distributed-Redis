@@ -15,7 +15,9 @@ const server = net.createServer((connection) => {
 
     connection.on('data', (chunks: Buffer) => {
         parser.feed(chunks);
+        // console.log("parsed: ", parser.drainCommands());
         const commands = parser.drainCommands();
+
         if (commands.length === 0) return;
 
         const responses: Buffer[] = [];
