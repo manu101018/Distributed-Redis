@@ -7,7 +7,7 @@ import { Store } from "./store/store";
 import { dispatch } from "./commands";
 
 const PORT = Number(process.env.PORT ?? 6380);
-const HOST = process.env.HOST ?? '127.0.0.1';
+const HOST = process.env.HOST ?? '0.0.0.0';
 const CLUSTER_MODE = process.env.CLUSTER_MODE === 'true';
 const WORKERS = Number(process.env.WORKERS ?? os.cpus().length);
 
@@ -42,7 +42,7 @@ function startWorker(): void {
         })
     })
 
-    server.listen(PORT, HOST, () => {
+    server.listen(PORT, HOST, 1024, () => {
         console.log(`Server is running on ${HOST}:${PORT}`);
     })
 }
@@ -53,8 +53,14 @@ if (!CLUSTER_MODE) {
 } else if (cluster.isPrimary) {
     console.log(`primary ${process.pid} forking ${WORKERS} workers`);
     for (let i = 0; i < WORKERS; i++) cluster.fork();
-    cluster.on('exit', (worker) => {
-        console.log(`worker ${worker.process.pid} died, restarting`);
+    cluster.on('exit', (worker, code, signal) => {
+        console.log(`worker ${worker.process.pid} died (code=${code}, signal=${signal})`);
+        if (code === 1 && !worker.exitedAfterDisconnect) {
+            // Give it a moment, and cap retries in a real system - for now, at
+            // minimum don't spin instantly and silently on an unrecoverable error.
+            console.error('worker exited abnormally - not auto-restarting to avoid a crash loop on unrecoverable errors (e.g. port already in use)');
+            return;
+        }
         cluster.fork();
     });
 } else {

@@ -1,0 +1,48 @@
+services:
+  redis-clone:
+    build: .
+    container_name: redis-clone
+    ports:
+      - "6380:6380"
+    environment:
+      - PORT=6380
+      - CLUSTER_MODE=CLUSTER_MODE=${CLUSTER_MODE:-false}
+      - WORKERS=4
+
+  # Real Redis running side-by-side for an apples-to-apples comparison.
+  real-redis:
+    image: redis:7-alpine
+    container_name: real-redis
+    ports:
+      - "6379:6379"
+
+    # redis-clone-cluster:
+    # build: .
+    # container_name: redis-clone-cluster
+    # ports:
+    #   - "6381:6380"
+    # environment:
+    #   - PORT=6380
+    #   - CLUSTER_MODE=true
+    #   - WORKERS=4
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "4"
+
+  # Isolated benchmark client - separate container, separate CPU accounting,
+  # so it no longer competes with redis-clone for the same core pool the
+  # way it did when both ran as local processes in Step 9.
+  benchmark:
+    build: .
+    depends_on:
+      - redis-clone
+    environment:
+      - HOST=redis-clone
+      - PORT=6380
+      - CONCURRENCY=5000
+      - TOTAL_REQUESTS=1000000
+      - PIPELINE=1
+    entrypoint: ["node", "dist/benchmark/load-test.js"]
+    profiles:
+      - benchmark
